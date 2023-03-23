@@ -308,6 +308,25 @@ Use Jenkins with POLL SCM option and after artifact is generated  using ansible 
 76. How can you protect sensitive information in ansible?
 77. How can you save the output of module execution in ansible?
 78. How can you manage error handling?
+In Ansible, you can manage error handling in a number of ways to ensure that your playbook runs smoothly and handles errors gracefully.
+
+Here are some ways to manage error handling in Ansible:
+
+Use the ignore_errors parameter: This parameter allows you to continue executing a playbook even if a task fails. You can use this parameter with a task to tell Ansible to ignore any errors that occur during execution of the task.
+
+Use the failed_when parameter: This parameter allows you to define custom failure conditions for a task. You can use this parameter to specify the conditions under which a task should be considered a failure.
+
+Use the block and rescue statements: These statements allow you to group a set of tasks together and define a rescue block to handle errors that occur during the execution of the tasks.
+
+Use the notify and handlers statements: These statements allow you to define handlers that are triggered when certain events occur during the execution of a playbook. You can use these statements to handle errors that occur during the execution of a task.
+
+Use the assert module: This module allows you to test a condition and fail a task if the condition is not met. You can use this module to ensure that certain conditions are met before executing a task.
+
+Use the any_errors_fatal parameter: This parameter allows you to specify that a playbook should stop executing if any task fails. You can use this parameter to ensure that errors are caught early and that the playbook does not continue executing if errors occur.
+
+By using these methods, you can manage error handling in Ansible and ensure that your playbook runs smoothly and handles errors gracefully.
+
+
 79. what are conditionals in ansible?
 80. write a playbook to create AMI on AWS?
 81. How can you the fact varibales in ansible?
@@ -366,5 +385,22 @@ copy file from node to master
         src: /path/to/source/file
         dest: /path/to/destination/directory
         flat: yes
+
+
+
+
+Ansible Tags
+
+- name: Install Apache web server
+  apt:
+    name: apache2
+    state: present
+  tags:
+    - apache
+    - webserver
+
+ansible-playbook playbook.yml --tags apache
+
+ansible-playbook playbook.yml --skip-tags webserver
 
 
