@@ -23,8 +23,14 @@ There are almost 16 variable precedence in ansible where extra vars have highist
   Ansible roles can be as complex or as simple as you need. Sometimes, it is helpful to start simple and iterate into a more complex role as you shore up the base functionality.
 
 7. What happen when one node or instance is unreachable?
+the playbook will not be run to that node.
 
 8. What happen when one task  is failed in playbook?
+In ansible it executes tasks from top to bottom when task is failed then other bottom tasks will not be executed.
+
+we can use in task,
+ignore_errors: true 
+it will ignore any failure ans still execute other tasks.
 
 9. I have 20 servers , I want to install one package in 5 servers and other package in next 5 servers..like that How to write in ansible script for that…Explain?
 
@@ -37,6 +43,31 @@ There are almost 16 variable precedence in ansible where extra vars have highist
 
 
 13. How to execute failure playbook again?
+ansible-playbook playbook.yml --start-at-task="install packages"
+
+The above will start executing your playbook at a task named “install packages”.
+
+Alternatively, take a look at this previous answer How to run only one task in ansible playbook?
+
+Finally, when a play fails, it usually gives you something along the lines of:
+
+PLAY RECAP ******************************************************************** 
+           to retry, use: --limit @/home/user/site.retry
+Use that --limit command and it should retry from the failed task.
+
+
+27
+
+
+Future readers:
+
+The --limit @/home/user/site.retry would not help in such a scenario, the .retry only stores the failed host and nothing more, so will just execute all tasks against failed hosts.
+
+If you are using the latest version (Ansible 2.x) the --start-at-task does not work for tasks defined inside roles.
+
+You can achieve similar effect by just using the --step flag e.g: ansible-playbook playbook.yml --step. The step asks you on before executing each task and you could choose (N)o/(y)es/(c)ontinue.
+
+With this approach you selectively execute tasks when needed and also continue from point where it failed, after fixes.
 
 
 
@@ -50,7 +81,19 @@ There are almost 16 variable precedence in ansible where extra vars have highist
 
 17. What is inventory used for in ansible?
 
+A child group’s variables will have higher precedence (override) a parent group’s variables.
+
 18. Name three places where ansible variables can be stored?
+
+ansible-playbook release.yml --extra-vars "version=1.23.45 other_variable=foo"
+
+You can decide where to set a variable based on the scope you want that value to have. Ansible has three main scopes:
+
+Global: this is set by config, environment variables and the command line
+
+Play: each play and contained structures, vars entries (vars; vars_files; vars_prompt), role defaults and vars.
+
+Host: variables directly associated to a host, like inventory, include_vars, facts or registered task outputs
 
 19. What connection anible establishes with  linux and windows node.
 
@@ -165,6 +208,69 @@ False
 
 
 60. Write a Ansible task that can copy the file to remote location with the ownership of Jboss?
+- name: Copy file with owner and permissions
+  ansible.builtin.copy:
+    src: /srv/myfiles/foo.conf
+    dest: /etc/foo.conf
+    owner: foo
+    group: foo
+    mode: '0644'
+
+- name: Copy file with owner and permission, using symbolic representation
+  ansible.builtin.copy:
+    src: /srv/myfiles/foo.conf
+    dest: /etc/foo.conf
+    owner: foo
+    group: foo
+    mode: u=rw,g=r,o=r
+
+- name: Another symbolic mode example, adding some permissions and removing others
+  ansible.builtin.copy:
+    src: /srv/myfiles/foo.conf
+    dest: /etc/foo.conf
+    owner: foo
+    group: foo
+    mode: u+rw,g-wx,o-rwx
+
+- name: Copy a new "ntp.conf" file into place, backing up the original if it differs from the copied version
+  ansible.builtin.copy:
+    src: /mine/ntp.conf
+    dest: /etc/ntp.conf
+    owner: root
+    group: root
+    mode: '0644'
+    backup: yes
+
+- name: Copy a new "sudoers" file into place, after passing validation with visudo
+  ansible.builtin.copy:
+    src: /mine/sudoers
+    dest: /etc/sudoers
+    validate: /usr/sbin/visudo -csf %s
+
+- name: Copy a "sudoers" file on the remote machine for editing
+  ansible.builtin.copy:
+    src: /etc/sudoers
+    dest: /etc/sudoers.edit
+    remote_src: yes
+    validate: /usr/sbin/visudo -csf %s
+
+- name: Copy using inline content
+  ansible.builtin.copy:
+    content: '# This file was moved to /etc/other.conf'
+    dest: /etc/mine.conf
+
+- name: If follow=yes, /path/to/file will be overwritten by contents of foo.conf
+  ansible.builtin.copy:
+    src: /etc/foo.conf
+    dest: /path/to/link  # link to /path/to/file
+    follow: yes
+
+- name: If follow=no, /path/to/link will become a file and be overwritten by contents of foo.conf
+  ansible.builtin.copy:
+    src: /etc/foo.conf
+    dest: /path/to/link  # link to /path/to/file
+    follow: no
+Return Values
 
 
 61. What is local action in Ansible?
@@ -212,3 +318,53 @@ Use Jenkins with POLL SCM option and after artifact is generated  using ansible 
 86. What type of roles you used in your playbook explain ?
 87. How to create and use the Dynamic inventory ?
 88. Write a playbook for installing AppDynamics and configure the agents for the same ?
+
+
+
+---
+- name: Sync Pull task - Executed on  the Destination host "{{groups['app'][1]}}"
+  hosts: "{{groups['app'][0]}}"
+  user: wlsusr
+  tasks:   
+    - name: Copy the file from mwiapp01 to mwiapp02 using Method Pull
+      tags: sync-pull
+      synchronize:
+        src: "{{ item }}"
+        dest: "{{ item }}"
+        mode: pull
+      delegate_to: "{{groups['app'][1]}}"
+      register: syncfile
+      run_once: true
+      with_items:
+       - "/tmp/app01-to-app02.jar"
+       
+       
+       
+       
+       
+       
+       
+ copy file from master to node
+       
+       ---
+- name: Copy file from Ansible master to node server
+  hosts: target_node
+  tasks:
+    - name: Copy file
+      copy:
+        src: /path/to/source/file
+        dest: /path/to/destination/file
+
+copy file from node to master
+---
+- name: Copy file from node server to Ansible master
+  hosts: target_node
+  become: true
+  tasks:
+    - name: Copy file
+      fetch:
+        src: /path/to/source/file
+        dest: /path/to/destination/directory
+        flat: yes
+
+
